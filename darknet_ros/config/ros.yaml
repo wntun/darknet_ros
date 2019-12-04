@@ -14,7 +14,7 @@ publishers:
   object_detector:
     topic: /darknet_ros/found_object
     queue_size: 1
-    latch: false
+    latch: true
 
   bounding_boxes:
     topic: /darknet_ros/bounding_boxes
@@ -24,10 +24,19 @@ publishers:
   detection_image:
     topic: /darknet_ros/detection_image
     queue_size: 1
-    latch: true
+    latch: false
 
 image_view:
 
   enable_opencv: true
   wait_key_delay: 1
   enable_console_output: true
+
+file_write:
+
+  enable_file_write: false
+  file_name: test.csv
+
+video_read:
+  enable_video_read: false
+  video_file_path: /home/nvidia/Videos/mobilenet_yolo_caffe.mp4

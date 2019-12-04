@@ -1,0 +1,11 @@
+yolo_model:
+
+  config_file:
+    name: soldier-mannequin-yolov3-tiny.cfg
+  weight_file:
+    name: soldier-mannequin-yolov3-tiny_best.weights
+  threshold:
+    value: 0.3
+  detection_classes:
+    names:
+      - soldier-mannequin
