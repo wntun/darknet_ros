@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <thread>
 #include <chrono>
+#include <fstream>
 
 // ROS
 #include <ros/ros.h>
@@ -53,6 +54,7 @@ extern "C" {
 #include "utils.h"
 #include "parser.h"
 #include "box.h"
+#include "image.h"
 #include "darknet_ros/image_interface.h"
 #include <sys/time.h>
 }
@@ -60,6 +62,8 @@ extern "C" {
 extern "C" void ipl_into_image(IplImage* src, image im);
 extern "C" image ipl_to_image(IplImage* src);
 extern "C" void show_image_cv(image p, const char *name, IplImage *disp);
+extern "C" image get_image_from_stream(CvCapture *cap);
+extern "C" int fill_image_from_stream(CvCapture *cap, image im);
 
 namespace darknet_ros {
 
@@ -179,6 +183,7 @@ class YoloObjectDetector
   int buffIndex_ = 0;
   IplImage * ipl_;
   float fps_ = 0;
+  float time_taken_ms_ = 0;
   float demoThresh_ = 0;
   float demoHier_ = .5;
   int running_ = 0;
@@ -200,6 +205,16 @@ class YoloObjectDetector
   int waitKeyDelay_;
   int fullScreen_;
   char *demoPrefix_;
+
+  bool enableFileWrite_;
+  std::ofstream writeFile_;
+  std::string fileName_;
+  bool isObjFound_;
+
+  CvCapture * cap_;
+  bool enableVideoRead_;
+  std::string videoFilePath_; 
+  
 
   std_msgs::Header imageHeader_;
   cv::Mat camImageCopy_;
