@@ -1,7 +1,9 @@
 cd catkin_workspace/src/darknet_ros/darknet_ros/yolo_network_config/weights/
 
 Yolo v3 (Soldier-mannequin):
- wget https://konkukackr-my.sharepoint.com/:u:/g/personal/wainwetun_konkuk_ac_kr/ERsAAcsSMztNkSxkYuo14dIBBQzJfCyamhjKZULyrPdXQQ?e=fKEHbX
+ wget "https://konkukackr-my.sharepoint.com/:u:/g/personal/wainwetun_konkuk_ac_kr/ERsAAcsSMztNkSxkYuo14dIBBQzJfCyamhjKZULyrPdXQQ?e=5mwNBU&downlod=1"
+ cp 'ERsAAcsSMztNkSxkYuo14dIBBQzJfCyamhjKZULyrPdXQQ?e=fKEHbX&download=1' soldier-mannequin-yolov3-tiny_best.weights
+ 
 
 COCO data set (Yolo v2):
   wget http://pjreddie.com/media/files/yolov2.weights
