@@ -39,4 +39,4 @@ file_write:
 
 video_read:
   enable_video_read: false
-  video_file_path: /home/nvidia/Videos/mobilenet_yolo_caffe.mp4
+  video_file_path: /root/yolo_v3_tiny_darknet.mp4
