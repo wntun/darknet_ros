@@ -17,7 +17,7 @@
 #include <thread>
 #include <chrono>
 #include <fstream>
-
+#include <dirent.h>
 // ROS
 #include <ros/ros.h>
 #include <std_msgs/Header.h>
@@ -64,6 +64,7 @@ extern "C" image ipl_to_image(IplImage* src);
 extern "C" void show_image_cv(image p, const char *name, IplImage *disp);
 extern "C" image get_image_from_stream(CvCapture *cap);
 extern "C" int fill_image_from_stream(CvCapture *cap, image im);
+extern "C" image load_image_color(char *filename, int w, int h);
 
 namespace darknet_ros {
 
@@ -210,6 +211,11 @@ class YoloObjectDetector
   std::ofstream writeFile_;
   std::string fileName_;
   bool isObjFound_;
+  std::string currentImageName_;
+
+  bool enableImageRead_;
+  std::string imageFolderPath_;
+  std::vector<std::string> imageList_;
 
   CvCapture * cap_;
   bool enableVideoRead_;
