@@ -34,9 +34,13 @@ image_view:
 
 file_write:
 
-  enable_file_write: false
+  enable_file_write: true
   file_name: test.csv
 
 video_read:
   enable_video_read: false
-  video_file_path: /root/yolo_v3_tiny_darknet.mp4
+  video_file_path: /home/nvidia/Videos/mobilenet_yolo_caffe.mp4
+
+image_read:
+  enable_image_read: true
+  image_folder_path: /home/nvidia/Pictures/images/
