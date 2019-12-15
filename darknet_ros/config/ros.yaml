@@ -44,4 +44,4 @@ video_read:
 
 image_read:
   enable_image_read: true
-  image_folder_path: /home/nvidia/Pictures/images/
+  image_folder_path: /images/
