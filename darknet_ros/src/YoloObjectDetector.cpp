@@ -62,16 +62,22 @@ bool YoloObjectDetector::readParameters()
   nodeHandle_.param("video_read/enable_video_read", enableVideoRead_, false);
   nodeHandle_.param("video_read/video_file_path", videoFilePath_, std::string("test.mp4"));
   nodeHandle_.param("file_write/enable_file_write", enableFileWrite_, false);
-  nodeHandle_.param("file_write/file_name", fileName_, std::string("test.txt"));
+  nodeHandle_.param("file_write/predict_file_name", predictFileName_, std::string("prediction result.txt"));
+  nodeHandle_.param("file_write/detection_time_file_name",detTimeFileName_, std::string("detection time.txt"));
   nodeHandle_.param("image_read/enable_image_read", enableImageRead_, false);
   nodeHandle_.param("image_read/image_folder_path", imageFolderPath_, std::string("/home/nvidia/Pictures/images"));
 
   if(enableFileWrite_)
   {
-	  writeFile_.open(fileName_);
-	  writeFile_<<"Frame"<<",";
-	  writeFile_<<"Detected or Not"<<",";
-	  writeFile_<<"Detection time (ms)" <<std::endl;
+	  writePredFile_.open(predictFileName_);
+	  writePredFile_<<"Frame"<<" ";
+	  writePredFile_<<"Detected_or_Not"<<std::endl;
+	  //writeFile_<<"Detection_time (ms)" <<std::endl;
+
+	  writeTimeFile_.open(detTimeFileName_);
+	  writeTimeFile_<<"Frame"<<" ";
+	  writeTimeFile_<<"Start_time"<<" ";
+	  writeTimeFile_<<"End_time"<<std::endl;
   }
 
   // Check if Xserver is running on Linux.
@@ -198,6 +204,44 @@ void YoloObjectDetector::init()
   checkForObjectsActionServer_->registerPreemptCallback(
       boost::bind(&YoloObjectDetector::checkForObjectsActionPreemptCB, this));
   checkForObjectsActionServer_->start();
+
+    if(enableVideoRead_)
+  {
+  	cap_ = cvCaptureFromFile(videoFilePath_.c_str());
+  }
+
+//  vector<std::string> imageList;
+
+//  ROS_INFO("%d enableImageRead_ %s folder & %s ", enableImageRead_, imageFolderPath_.c_str(), videoFilePath_.c_str());
+  if(enableImageRead_)
+  {
+	//ROS_INFO("inside if");
+	struct dirent *ent;
+	DIR *dir;
+        if((dir= opendir(imageFolderPath_.c_str()))!=NULL)
+	{
+
+		while((ent=readdir(dir)) !=NULL)
+		{
+			std::string temp_path = ent->d_name;
+		//if(strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0 && strcmp(ent->d_name,"\0") && (std::to_string(ent->d_name).find(".png")!=std::string::npos))
+			if(temp_path.find(".png")!=std::string::npos)
+			{
+			//std::string temp_path = imageFolderPath_ + ent->d_name;
+
+				imageList_.push_back(temp_path);
+			ROS_INFO("reading dir %s", temp_path.c_str());
+			}
+		}
+		closedir(dir);
+	}
+	ROS_INFO("%d images in the folder %s", imageList_.size(), imageFolderPath_.c_str());
+  }
+  if(cap_ || imageList_.size()>0)
+  {
+	  boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
+      	  imageStatus_ = true;
+  }
 }
 
 void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
@@ -368,6 +412,7 @@ void *YoloObjectDetector::detectInThread()
     //printf("\033[1;1H");
     printf("\nFPS:%.1f\n",fps_);
     printf("Objects:\n\n");
+    printf("%d\n", buffIndex_);
   }
 
   image display = buff_[(buffIndex_+2) % 3];
@@ -384,7 +429,8 @@ void *YoloObjectDetector::detectInThread()
 	  	{
 		 	 if(dets[i].prob[j]>demoThresh_)
 		  	{
-				  isObjFound_ = true;
+				//printf("%d\n", buffIndex_);
+				isObjFound_ = true;
 			}
 		  }
   	}
@@ -460,7 +506,7 @@ void *YoloObjectDetector::fetchInThread()
   }
   else if(enableVideoRead_)
   {
-
+	//boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
   	int status = fill_image_from_stream(cap_, buff_[buffIndex_]);
   	if(status == 0) demoDone_ = true;
   }
@@ -470,13 +516,23 @@ void *YoloObjectDetector::fetchInThread()
 	  if(status==0) demoDone_ = true;
 	  else
 	  {
-	  	currentImageName_ = imageList_.back();
-	  	char* writable = new char[currentImageName_.size()+1];
-	  	std::copy(currentImageName_.begin(), currentImageName_.end(), writable);
-	  	writable[currentImageName_.size()]='\0';
-	  	buff_[buffIndex_] = load_image_color(writable, 0,0);
-	  	delete[] writable;
-	  	imageList_.pop_back();
+		//std::string temp_imgPath = imageList_.back();
+		//std::size_t temp_found = temp_imgPath.find(imageFolderPath_);
+		{
+			boost::unique_lock<boost::shared_mutex> lock(mutexImageName_);
+	  		currentImageName_ = imageList_.back();
+	
+   			std::string temp_path = imageFolderPath_ + currentImageName_;
+	  		char* writable = new char[temp_path.size()+1];
+		//std::string temp_path = currentImageName_ + imageFolderPath_;
+			std::copy(temp_path.begin(), temp_path.end(), writable);
+	  		writable[temp_path.size()]='\0';
+			ROS_INFO("%s is for detection", writable);
+	  		buff_[buffIndex_] = load_image_color(writable, 0,0);
+		
+	  		delete[] writable;
+	  		imageList_.pop_back();
+		}
 	  }
 	  //int status = imageList_.empty();
 	  //if(status==0) demoDone_ = true;
@@ -546,53 +602,11 @@ void YoloObjectDetector::setupNetwork(char *cfgfile, char *weightfile, char *dat
 void YoloObjectDetector::yolo()
 {
   const auto wait_duration = std::chrono::milliseconds(2000);
-  if(enableVideoRead_)
-  {
-  	cap_ = cvCaptureFromFile(videoFilePath_.c_str());
-  }
 
-//  vector<std::string> imageList;
-
-//  ROS_INFO("%d enableImageRead_ %s folder & %s ", enableImageRead_, imageFolderPath_.c_str(), videoFilePath_.c_str());
-  if(enableImageRead_)
-  {
-	ROS_INFO("inside if");
-	struct dirent *ent;
-	DIR *dir = opendir(imageFolderPath_.c_str());
-
-	while((ent=readdir(dir)) !=NULL)
-	{
-		if(strcmp(ent->d_name, ".")!=0 && strcmp(ent->d_name, "..")!=0 && strcmp(ent->d_name,"\0"))
-		{
-			std::string temp_path = imageFolderPath_ + ent->d_name;
-
-			imageList_.push_back(temp_path);
-			//ROS_INFO("reading dir %s", temp_path.c_str());
-		}
-	}
-	closedir(dir);
-	ROS_INFO("%d images in the folder %s", imageList_.size(), imageFolderPath_.c_str());
-	/*
-	if((dir==opendir(imageFolderPath_.c_str()))!=NULL)
-	{
-		ROS_INFO("inside if if");
-		while((ent==readdir(dir))!=NULL)
-		{
-			printf("%s\n", ent->d_name);
-			ROS_INFO("%s ", ent->d_name);
-			imageList_.push_back(ent->d_name);
-		}
-		closedir(dir);
-	} */
-	/*
-	for(const auto & entry: std::filesystem::directory_iterator(imageFolderPath_))
-	{
-		imageList_.push_back(entry.path());
-	}*/
-  }
+  //if(imageList_.size()>0 && !cap_) imageStatus_=true;
   //cv::VideoCapture cap(videoFilePath_);
   //ROS_INFO("%d && %d && %d", imageList_.size(), !cap_, !getImageStatus());
-  while (imageList_.size()==0 && !cap_ && !getImageStatus()) {
+  while (!getImageStatus()) {
     printf("Waiting for image.\n");
     if (!isNodeRunning()) {
       return;
@@ -620,7 +634,7 @@ void YoloObjectDetector::yolo()
   if(!enableVideoRead_ && !enableImageRead_)
   {
   	{
-    		boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
+    		 boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
    		 IplImageWithHeader_ imageAndHeader = getIplImageWithHeader();
    		 IplImage* ROS_img = imageAndHeader.image;
    		 buff_[0] = ipl_to_image(ROS_img);
@@ -636,20 +650,28 @@ void YoloObjectDetector::yolo()
   }
   else if(enableVideoRead_)
   {
+	  //boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
 	  buff_[0] = get_image_from_stream(cap_);
 	  buff_[1] = copy_image(buff_[0]);
 	  buff_[2] = copy_image(buff_[0]);
   }
+  
   else
   {
-	  currentImageName_ = imageList_.back();
-	  char *writable = new char[currentImageName_.size()+1];
-	  std::copy(currentImageName_.begin(), currentImageName_.end(), writable);
-	  writable[currentImageName_.size()]='\0';
-	   
-	  buff_[0] = load_image_color(writable, 0,0);
-	  delete[] writable;
-	  imageList_.pop_back();
+	  {
+	  	boost::unique_lock<boost::shared_mutex> lock(mutexImageName_);
+	  	currentImageName_ = imageList_.back();
+	  
+	  	std::string temp_path = imageFolderPath_ + currentImageName_;
+	  	char *writable = new char[temp_path.size()+1];
+	 	std::copy(temp_path.begin(), temp_path.end(), writable);
+	  	writable[temp_path.size()]='\0';
+	  	ROS_INFO("%s is now for detection inside yolo.", writable); 
+	  	buff_[0] = load_image_color(writable, 0,0);
+	  
+	  	delete[] writable;
+	  	imageList_.pop_back();
+	  }
 	  //ROS_INFO("%d x %d", 
 	  //ROS_INFO("%s image is for detection and now %d images are left", temp.c_str(), imageList_.size());
 	  buff_[1] = copy_image(buff_[0]);
@@ -673,15 +695,41 @@ void YoloObjectDetector::yolo()
   }
 
   demoTime_ = what_time_is_it_now();
-
+  //std::chrono::steady_clock::time_point start, end;
+  //start = std::chrono::steady_clock::now();
+  clock_t start_t, end_t;
+  start_t = clock();
   while (!demoDone_) {
-    buffIndex_ = (buffIndex_ + 1) % 3;
-    fetch_thread = std::thread(&YoloObjectDetector::fetchInThread, this);
+    
     detect_thread = std::thread(&YoloObjectDetector::detectInThread, this);
-    double detTime = (what_time_is_it_now()-demoTime_)*1000;
+    //end = std::chrono::steady_clock::now();
+    //double detTime = (what_time_is_it_now()-demoTime_)*1000;
     if (!demoPrefix_) {
       fps_ = 1./(what_time_is_it_now() - demoTime_);
+      //demoTime_ = what_time_is_it_now();
+      //end_t = clock();
+      if(enableFileWrite_)
+      {
+	      if(enableVideoRead_)
+	      {
+		      //writePredFile_<<count<<" ";
+		      writeTimeFile_<<count<<" ";
+	      }
+	      if(enableImageRead_)
+	      {
+		      //writePredFile_<<currentImageName_<<" ";
+		      writeTimeFile_<<currentImageName_<<" ";
+	      }
+	      
+	      //writePredFile_<<isObjFound_<<std::endl;
+
+	      writeTimeFile_<<start_t<<" ";
+	      writeTimeFile_<<clock()<<std::endl;
+
+      }
+      start_t = clock();
       demoTime_ = what_time_is_it_now();
+      //start = std::chrono::steady_clock::now();
       if (viewImage_) {
         displayInThread(0);
 	ros::Duration(0.5).sleep();
@@ -689,32 +737,41 @@ void YoloObjectDetector::yolo()
         generate_image(buff_[(buffIndex_ + 1)%3], ipl_);
       }
       publishInThread();
+      //buffIndex_ = (buffIndex_ + 1) % 3;
+      //fetch_thread = std::thread(&YoloObjectDetector::fetchInThread, this);
     } else {
       char name[256];
       sprintf(name, "%s_%08d", demoPrefix_, count);
       save_image(buff_[(buffIndex_ + 1) % 3], name);
     }
-    fetch_thread.join();
+    //fetch_thread.join();
     detect_thread.join();
+    
+
     if(enableFileWrite_)
     {
 	    if(enableVideoRead_)
-	    	writeFile_<<count<<",";
+		    writePredFile_<<count<<" ";
 	    if(enableImageRead_)
-		writeFile_<<currentImageName_<<",";
-	    writeFile_<<isObjFound_<<",";
-	    writeFile_<<detTime<<std::endl;
+		    writePredFile_<<currentImageName_<<" ";
+	    writePredFile_<<isObjFound_<<std::endl;
     }
+
+    buffIndex_= (buffIndex_ + 1) %3;
+    fetch_thread = std::thread(&YoloObjectDetector::fetchInThread, this);
+
     ++count;
     if (!isNodeRunning()) {
       demoDone_ = true;
     }
+    fetch_thread.join();
   }
 
   cv::destroyAllWindows();
   if(enableFileWrite_)
   {
-  	writeFile_.close(); 
+  	writePredFile_.close(); 
+	writeTimeFile_.close();
   }
 }
 
