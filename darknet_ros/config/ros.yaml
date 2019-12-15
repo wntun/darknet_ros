@@ -28,14 +28,15 @@ publishers:
 
 image_view:
 
-  enable_opencv: true
+  enable_opencv: false
   wait_key_delay: 1
   enable_console_output: true
 
 file_write:
 
   enable_file_write: true
-  file_name: test.csv
+  predict_file_name: prediction.txt
+  detection_time_file_name: detection_time.txt
 
 video_read:
   enable_video_read: false
