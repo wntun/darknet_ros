@@ -18,6 +18,7 @@
 #include <chrono>
 #include <fstream>
 #include <dirent.h>
+#include <time.h>
 // ROS
 #include <ros/ros.h>
 #include <std_msgs/Header.h>
@@ -208,9 +209,12 @@ class YoloObjectDetector
   char *demoPrefix_;
 
   bool enableFileWrite_;
-  std::ofstream writeFile_;
-  std::string fileName_;
+  std::ofstream writePredFile_;
+  std::string predictFileName_;
+  std::ofstream writeTimeFile_;
+  std::string detTimeFileName_;
   bool isObjFound_;
+  boost::shared_mutex mutexImageName_;
   std::string currentImageName_;
 
   bool enableImageRead_;
