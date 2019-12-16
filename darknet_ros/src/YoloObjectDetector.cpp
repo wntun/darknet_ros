@@ -673,7 +673,7 @@ void YoloObjectDetector::yolo()
   
   while (!demoDone_) {
     //start_t = clock();
-	  auto start = std::chrono::high_resolution_clock::now()
+	  auto start = std::chrono::high_resolution_clock::now();
     detectInThread();
 	  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
     if(enableFileWrite_)
