@@ -76,8 +76,8 @@ bool YoloObjectDetector::readParameters()
 
 	  writeTimeFile_.open(detTimeFileName_);
 	  writeTimeFile_<<"Frame"<<" ";
-	  writeTimeFile_<<"Start_time"<<" ";
-	  writeTimeFile_<<"End_time"<<std::endl;
+	  //writeTimeFile_<<"Start_time"<<" ";
+	  writeTimeFile_<<"Duration (ms)"<<std::endl;
   }
 
   // Check if Xserver is running on Linux.
@@ -112,7 +112,7 @@ void YoloObjectDetector::init()
   //int imageSource = 0;
   //std::string imagePath;
 
-  // Threshold of object detection.
+  // Threshold of object detection.?
   float thresh;
   nodeHandle_.param("yolo_model/threshold/value", thresh, (float) 0.3);
 
@@ -669,11 +669,13 @@ void YoloObjectDetector::yolo()
   }
 
   demoTime_ = what_time_is_it_now();
-  clock_t start_t, end_t;
+  //clock_t start_t, end_t;
   
   while (!demoDone_) {
-    start_t = clock();
+    //start_t = clock();
+	  auto start = std::chrono::high_resolution_clock::now()
     detectInThread();
+	  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
     if(enableFileWrite_)
     {
       if(enableImageRead_)
@@ -681,9 +683,9 @@ void YoloObjectDetector::yolo()
 	 writeTimeFile_<<currentImageName_<<" ";
       }
 	      
-
-      writeTimeFile_<<start_t<<" ";
-      writeTimeFile_<<clock()<<std::endl;
+	writeTimeFile_<<elapsed.count()<<std::endl;
+     // writeTimeFile_<<start_t<<" ";
+      //writeTimeFile_<<clock()<<std::endl;
 
     }
 
