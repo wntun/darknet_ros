@@ -21,6 +21,7 @@
 #include <time.h>
 // ROS
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <std_msgs/Header.h>
 #include <actionlib/server/simple_action_server.h>
 #include <sensor_msgs/image_encodings.h>
