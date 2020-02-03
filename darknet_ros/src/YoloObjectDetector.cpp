@@ -65,7 +65,9 @@ bool YoloObjectDetector::readParameters()
   nodeHandle_.param("file_write/predict_file_name", predictFileName_, std::string("prediction result.txt"));
   nodeHandle_.param("file_write/detection_time_file_name",detTimeFileName_, std::string("detection time.txt"));
   nodeHandle_.param("image_read/enable_image_read", enableImageRead_, false);
-  nodeHandle_.param("image_read/image_folder_path", imageFolderPath_, std::string("/home/nvidia/Pictures/images"));
+  nodeHandle_.param("image_read/image_folder_path",  imageFolderPath_, std::string("/home/nvidia/Pictures/images"));
+  
+  imageFolderPath_ = ros::package::getPath("darknet_ros")+imageFolderPath_;
 
   if(enableFileWrite_)
   {
@@ -205,7 +207,7 @@ void YoloObjectDetector::init()
       boost::bind(&YoloObjectDetector::checkForObjectsActionPreemptCB, this));
   checkForObjectsActionServer_->start();
 
-    if(enableVideoRead_)
+  if(enableVideoRead_)
   {
   	cap_ = cvCaptureFromFile(videoFilePath_.c_str());
   }
@@ -230,13 +232,14 @@ void YoloObjectDetector::init()
 			//std::string temp_path = imageFolderPath_ + ent->d_name;
 
 				imageList_.push_back(temp_path);
-			ROS_INFO("reading dir %s", temp_path.c_str());
+				ROS_INFO("reading dir %s", temp_path.c_str());
 			}
 		}
 		closedir(dir);
 	}
 	ROS_INFO("%d images in the folder %s", imageList_.size(), imageFolderPath_.c_str());
   }
+
   if(cap_ || imageList_.size()>0)
   {
 	  boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
@@ -392,13 +395,14 @@ detection *YoloObjectDetector::avgPredictions(network *net, int *nboxes)
 
 void *YoloObjectDetector::detectInThread()
 {
+  //ROS_INFO("inside detectInThread");
   running_ = 1;
   float nms = .4;
 
   layer l = net_->layers[net_->n - 1];
   float *X = buffLetter_[0].data;
   float *prediction = network_predict(net_, X);
-
+  
   rememberNetwork(net_);
   detection *dets = 0;
   int nboxes = 0;
@@ -410,7 +414,7 @@ void *YoloObjectDetector::detectInThread()
   if (enableConsoleOutput_) {
     //printf("\033[2J");
     //printf("\033[1;1H");
-    //printf("\nFPS:%.1f\n",fps_);
+    printf("\nFPS:%.1f\n",fps_);
     printf("Objects:\n\n");
     //printf("%d\n", buffIndex_);
   }
@@ -465,7 +469,8 @@ void *YoloObjectDetector::detectInThread()
   if (count == 0) {
     roiBoxes_[0].num = 0;
     isObjFound_ = false;
-  } else {
+  } 
+  else {
     roiBoxes_[0].num = count;
     isObjFound_ = true;
   }
@@ -474,7 +479,7 @@ void *YoloObjectDetector::detectInThread()
     {
       if(enableImageRead_)
       {
-	writePredFile_<<currentImageName_<<" ";
+	      writePredFile_<<currentImageName_<<" ";
       }
 	      
       writePredFile_<<isObjFound_<<std::endl;
@@ -643,19 +648,21 @@ void YoloObjectDetector::yolo()
   else if(enableImageRead_)
   {
 	currentImageName_ = imageList_.back();
-	  
+	//ROS_INFO("%s image name.", currentImageName_);
 	std::string temp_path = imageFolderPath_ + currentImageName_;
 	char *writable = new char[temp_path.size()+1];
 	std::copy(temp_path.begin(), temp_path.end(), writable);
 	writable[temp_path.size()]='\0';
+	//ROS_INFO("%s is for detection", writable);
 	buff_[0] = load_image_color(writable, 0,0);
 	//ROS_INFO("%s is now for detection inside yolo.", writable);
 	delete[] writable;
 	imageList_.pop_back();
+	//ROS_INFO("popped back!");
   }
   buffLetter_[0] = letterbox_image(buff_[0], net_->w, net_->h);
   ipl_ = cvCreateImage(cvSize(buff_[0].w, buff_[0].h), IPL_DEPTH_8U, buff_[0].c);
-
+  //ROS_INFO("cv create image");
   int count = 0;
 
   if (!demoPrefix_ && viewImage_) {
@@ -667,38 +674,42 @@ void YoloObjectDetector::yolo()
       cvResizeWindow("YOLO V3", 640, 480);
     }
   }
+  //ROS_INFO("after if!demoPrefix");
 
   demoTime_ = what_time_is_it_now();
   //clock_t start_t, end_t;
   
   while (!demoDone_) {
     //start_t = clock();
-	  auto start = std::chrono::high_resolution_clock::now();
+    auto start = std::chrono::high_resolution_clock::now();
+    //ROS_INFO("before detect thread");
     detectInThread();
-	  auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
+    //ROS_INFO("after detect thread");
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()-start);
     if(enableFileWrite_)
     {
       if(enableImageRead_)
       {
-	 writeTimeFile_<<currentImageName_<<" ";
+	      writeTimeFile_<<currentImageName_<<" ";
       }
 	      
-	writeTimeFile_<<elapsed.count()<<std::endl;
+	    writeTimeFile_<<elapsed.count()<<std::endl;
      // writeTimeFile_<<start_t<<" ";
       //writeTimeFile_<<clock()<<std::endl;
-
     }
 
     if (!demoPrefix_) {
       fps_ = 1./(what_time_is_it_now() - demoTime_);
       demoTime_ = what_time_is_it_now();
       if (viewImage_) {
-	ipl_ = cvCreateImage(cvSize(buff_[0].w, buff_[0].h), IPL_DEPTH_8U, buff_[0].c);
+	      ipl_ = cvCreateImage(cvSize(buff_[0].w, buff_[0].h), IPL_DEPTH_8U, buff_[0].c);
         displayInThread(0);
-      } else {
+      } 
+      else {
         generate_image(buff_[0], ipl_);
       }
-    } else {
+    } 
+    else {
       char name[256];
       sprintf(name, "%s_%08d", demoPrefix_, count);
       save_image(buff_[0], name);
@@ -715,8 +726,8 @@ void YoloObjectDetector::yolo()
   if(enableFileWrite_)
   {
   	writePredFile_.close(); 
-	writeTimeFile_.close();
-	ROS_INFO("Finished detection");
+	  writeTimeFile_.close();
+	  ROS_INFO("Finished detection");
   }
 }
 
