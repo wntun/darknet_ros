@@ -1,0 +1,15 @@
+yolo_model:
+  config_file:
+    name: add_2021-yolov3-tiny.cfg
+  weight_file:
+    name: add_2021-yolov3-tiny_best.weights
+  threshold:
+    value: 0.25
+  detection_classes:
+    names:
+      - dog
+      - radiation_mark
+      - biochem_mark
+      - exit_mark
+      - end_mark
+      - start_mark
