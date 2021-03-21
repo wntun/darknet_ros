@@ -8,6 +8,7 @@ yolo_model:
   detection_classes:
     names:
       - dog
+      - soldier
       - radiation_mark
       - biochem_mark
       - exit_mark
