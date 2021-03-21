@@ -19,9 +19,9 @@
 #include <fstream>
 #include <dirent.h>
 #include <time.h>
+#include <ctime>
 // ROS
 #include <ros/ros.h>
-#include <ros/package.h>
 #include <std_msgs/Header.h>
 #include <actionlib/server/simple_action_server.h>
 #include <sensor_msgs/image_encodings.h>
@@ -213,7 +213,9 @@ class YoloObjectDetector
   std::ofstream writePredFile_;
   std::string predictFileName_;
   std::ofstream writeTimeFile_;
-  std::string detTimeFileName_;
+  //std::string detTimeFileName_;
+  std::string executionTimeFileName_;
+  std::string resultFolderName_;
   bool isObjFound_;
   boost::shared_mutex mutexImageName_;
   std::string currentImageName_;
