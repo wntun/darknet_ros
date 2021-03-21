@@ -35,8 +35,8 @@ image_view:
 file_write:
 
   enable_file_write: true
-  result_folder: /home/nvidia/Pictures/team_konkuk/
-  execution_time_file_name: /home/nvidia/Pictures/team_konkuk/execution_time.txt
+  result_folder: /data/team_konkuk/
+  execution_time_file_name: /data/team_konkuk/execution_time.txt
 
 video_read:
   enable_video_read: false
@@ -44,4 +44,4 @@ video_read:
 
 image_read:
   enable_image_read: true
-  image_folder_path: /home/nvidia/Pictures/images/
+  image_folder_path: /data/images/
