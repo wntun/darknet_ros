@@ -11,7 +11,7 @@
 
   <!-- ROS and network parameter files -->
   <arg name="ros_param_file"             default="$(find darknet_ros)/config/ros.yaml"/>
-  <arg name="network_param_file"         default="$(find darknet_ros)/config/soldier-mannequin-yolov3-tiny.yaml"/>
+  <arg name="network_param_file"         default="$(find darknet_ros)/config/add_2021-yolov3-tiny.yaml"/>
 
 
   <!-- Load parameters -->
